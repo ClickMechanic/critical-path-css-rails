@@ -28,7 +28,7 @@ RSpec.describe 'ConfigLoader' do
       let(:config_file) { file_fixture('config/no-paths-specified.yml').read }
 
       it 'sets css_paths with the lone manifest path' do
-        expect(subject.config['css_paths']).to eq ['/stylesheets/application.css']
+        expect(subject.config['css_paths']).to eq ['/app/spec/internal/public/stylesheets/application.css']
       end
     end
 
