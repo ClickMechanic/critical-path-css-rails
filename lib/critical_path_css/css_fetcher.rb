@@ -5,6 +5,22 @@ module CriticalPathCss
   class CssFetcher
     GEM_ROOT = File.expand_path(File.join('..', '..'), File.dirname(__FILE__))
 
+    # Heroku-24 (Ubuntu 24.04 / glibc 2.39) + Chromium bundled with puppeteer@2.1.1
+    # (via penthouse@2.3.3): without --no-zygote/--single-process, Chromium dies in the
+    # zygote with FATAL:sandbox::ThreadHelpers::IsSingleThreaded() and generation hangs.
+    # --no-sandbox/--disable-setuid-sandbox are required with --no-zygote;
+    # --disable-dev-shm-usage/--disable-gpu help on constrained dynos.
+    # Overridable via penthouse_options['puppeteer']['args'] in critical_path_css.yml.
+    CHROMIUM_LAUNCH_ARGS = [
+      '--disable-setuid-sandbox',
+      '--no-sandbox',
+      '--ignore-certificate-errors',
+      '--no-zygote',
+      '--single-process',
+      '--disable-dev-shm-usage',
+      '--disable-gpu'
+    ].freeze
+
     def initialize(config)
       @config = config
     end
@@ -40,6 +56,10 @@ module CriticalPathCss
           'Accept-Encoding' => 'identity'
         }
       }.merge(@config.penthouse_options)
+
+      # Deep-merge so a YAML `puppeteer:` hash does not wipe default Chromium args.
+      options['puppeteer'] = { 'args' => CHROMIUM_LAUNCH_ARGS }.merge(options['puppeteer'] || {})
+
       out, err, st = Dir.chdir(GEM_ROOT) do
         Open3.capture3('node', 'lib/fetch-css.js', JSON.dump(options))
       end
